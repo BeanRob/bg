@@ -2,7 +2,6 @@
 When it is someone's birthday, they are declared The Birthday Ghoul, being
 given a special role.
 ## Setup
-- Pick a directory name. As an example, I will be using `birthdays`.
 - Get your bot's token. Here it will be replaced with `bot-token`.
 ```sh
 git clone https://github.com/BeanRob/bg.git
@@ -10,6 +9,7 @@ cd bg
 echo "dir = '$(pwd)'" > config.py
 echo "token = 'bot-token'" >> config.py
 cp birthday.service /etc/systemd/system/
+chmod 777 /etc/systemd/system/birthday.service
 systemctl start birthday
 ```
 ## Commands
