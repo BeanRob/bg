@@ -10,14 +10,14 @@ from   discord.ext import commands
 from   config      import dir
 from   config      import token
 
-pritn("Checking for birthdays directory...")
+print("Checking for birthdays directory...")
 try:
     os.mkdir("./birthdays")
     print("Directory did not exist, so has been made.")
 except FileExistsError:
     print("Directory exists.")
 
-pritn("Checking for settings directory...")
+print("Checking for settings directory...")
 try:
     os.mkdir("./settings")
     print("Directory did not exist, so has been made.")
