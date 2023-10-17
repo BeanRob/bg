@@ -7,7 +7,7 @@ given a special role.
 ```sh
 git clone https://github.com/BeanRob/bg.git
 cd bg
-echo "token = 'bot-token'" >> config.py
+echo "token = 'bot-token'" > config.py
 cp birthday.service /etc/systemd/system/
 chmod 777 /etc/systemd/system/birthday.service
 systemctl start birthday
