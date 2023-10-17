@@ -1,7 +1,7 @@
 # Birthday Ghoul
 When it is someone's birthday, they are declared The Birthday Ghoul, being
 given a special role.
-![bg](bg.png)
+![bg](icon.png)
 ## Setup
 - Get your bot's token. Here it will be replaced with `bot-token`.
 ```sh
