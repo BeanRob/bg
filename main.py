@@ -41,11 +41,14 @@ def isleap():
 # guild
 def registered(guild, user):
     lines = []
-    with open("./birthdays/" + str(guild) + ".txt", "r") as file:
-        lines = file.readlines()
-    for line in lines:
-        if str(user) in line:
-            return True
+    try:
+        with open("./birthdays/" + str(guild) + ".txt", "r") as file:
+            lines = file.readlines()
+        for line in lines:
+            if str(user) in line:
+                return True
+    except FileNotFoundError:
+        return False
     return False
 
 # Changes list of string IDs into list of int IDs
@@ -171,8 +174,8 @@ async def addbirth(ctx,
         await ctx.respond("**Error:** Day and month should be valid numbers.", ephemeral=True)
     except AttributeError:
         await ctx.respond("**Error:** You already have a birthday registered.", ephemeral=True)
-    except Exception as e:
-        await ctx.respond(f"**Fatal Error:** {e}", ephemeral=True)
+    # except Exception as e:
+    #     await ctx.respond(f"**Fatal Error:** {e}", ephemeral=True)
 
 @bot.command(name="init", description="set the bot up")
 async def init(ctx,
