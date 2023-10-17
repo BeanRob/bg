@@ -7,7 +7,6 @@ import datetime
 import discord
 from   discord     import Option
 from   discord.ext import commands
-from   config      import dir
 from   config      import token
 
 print("Checking for birthdays directory...")
@@ -42,7 +41,7 @@ def isleap():
 # guild
 def registered(guild, user):
     lines = []
-    with open(dir + "/birthdays/" + str(guild) + ".txt", "r") as file:
+    with open("./birthdays/" + str(guild) + ".txt", "r") as file:
         lines = file.readlines()
     for line in lines:
         if str(user) in line:
@@ -63,14 +62,14 @@ async def checkbirth():
 
 async def checkguild(guild):
     print(f"Checking guild with ID {guild}")
-    with open(f"{dir}/settings/{guild}.txt", 'r') as file:
+    with open(f"./settings/{guild}.txt", 'r') as file:
         settings = numberify(file.readlines())
     print(f"Settings for guild with ID {guild} are: {settings}")
     if settings != []:
         channel = settings[0]
         role    = settings[1]
         lines   = []
-        with open(f"{dir}/birthdays/{guild}.txt", 'r') as file:
+        with open(f"./birthdays/{guild}.txt", 'r') as file:
             lines = file.readlines()
         print(f"Birthdays: {lines}")
         now = datetime.date.today()
@@ -118,10 +117,10 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     # Make birthdays file
-    with open(dir + "/birthdays/" + str(guild.id) + ".txt", "w") as file:
+    with open("./birthdays/" + str(guild.id) + ".txt", "w") as file:
         file.write("")
     # Make settings file
-    with open(dir + "/settings/" + str(guild.id) + ".txt", "w") as file:
+    with open("./settings/" + str(guild.id) + ".txt", "w") as file:
         file.write("")
     print("New files created for guild with ID " + str(guild.id))
 
@@ -150,8 +149,18 @@ async def addbirth(ctx,
         if registered(ctx.guild.id, ctx.author.id):
             raise AttributeError("already registered")
 
-        with open(dir + "/birthdays/" + str(ctx.guild.id) + ".txt", "a") as file:
-            file.write(f"{ctx.author.id} {day} {month}\n")
+        value = f"{ctx.author.id} {day} {month}\n"
+        try:
+            with open(f"./birthdays/{ctx.guild.id}.txt", "r") as file:
+                lines = file.readlines()
+            split = lines.split(" ")
+            for i in range(0, len(split)):
+                if split[i][1] > day and split[i][2] > month:
+                    lines.insert(i, value)
+        except FileNotFoundError:
+            lines = [value]
+        with open("./birthdays/" + str(ctx.guild.id) + ".txt", "w") as file:
+            file.writelines(lines)
 
         if day == 29 and month == 2:
             await ctx.respond(f"{ctx.author.mention}, your birthday has been recorded as {day}/{month}. *On non-leap years, your birthday will be treated as 28/02.*", ephemeral=True)
@@ -187,6 +196,21 @@ async def init(ctx,
             await ctx.respond(f"**Error:** Setup failure. Reason:\n{e}", ephemeral=True)
     else:
         await ctx.respond("**Error:** To set the bot up, you must be able to manage the server.", ephemeral=True)
+
+@bot.command(name="list", description="list all birthdays")
+async def list(ctx):
+    guild = ctx.guild
+    with open(f"./birthdays/{guild.id}.txt", 'r') as file:
+        lines = file.readlines()
+    output = ""
+    for line in lines:
+        split = line.split()
+        user = await guild.fetch_member(split[0])
+        date = split[1] + "/" + split[2]
+        output = output + f"{user.name} - {date}\n"
+    await ctx.respond(output)
+
+
 
 @bot.command(name="check", description="force check for birthdays")
 async def check(ctx):
