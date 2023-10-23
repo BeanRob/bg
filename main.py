@@ -2,6 +2,7 @@
 # pip install py-cord
 
 import os
+import asyncio
 import threading
 import datetime
 import discord
@@ -61,7 +62,7 @@ def numberify(list):
 async def checkbirth():
     for guild in os.listdir("./birthdays/"):
         guild = int(guild.split('.')[0])
-        checkguild(guild)
+        await checkguild(guild)
 
 async def checkguild(guild):
     print(f"Checking guild with ID {guild}")
@@ -76,7 +77,6 @@ async def checkguild(guild):
             lines = file.readlines()
         print(f"Birthdays: {lines}")
         now = datetime.date.today()
-        print(now.day, now.month)
         for line in lines:
             split = numberify(line.split(" "))
             if now.day == split[1] and now.month == split[2]:
@@ -86,7 +86,7 @@ async def checkguild(guild):
                 print(f"Birthday detected for user {split[0]} (normally 29/2, but this is not a leap year)")
                 await birthday(guild, role, channel, split[0])
             else:
-                await unbirthday(guild, role, split[0])
+                await unbirthday(guild, role, channel, split[0])
 
 async def birthday(guild_id, role_id, channel_id, user_id):
     guild   = bot.get_guild(guild_id)
@@ -97,12 +97,16 @@ async def birthday(guild_id, role_id, channel_id, user_id):
     await channel.send(f"@everyone Today {user.mention} is the birthday ghoul. Wish them a happy birthday!")
 
 
-async def unbirthday(guild_id, role_id, user_id):
+async def unbirthday(guild_id, role_id, channel_id, user_id):
     guild   = bot.get_guild(guild_id)
     role    = guild.get_role(role_id)
     user    = await guild.fetch_member(user_id)
     print(f"deleting birthday status from {user.name}")
-    await user.remove_roles(role)
+    try:
+        await user.remove_roles(role)
+    except discord.errors.Forbidden:
+        print(f"Tried to remove birthday priveleges from {user.name}, but failed. Might someone else do it, pretty please?")
+
 
 
 # When the bot is ready:
@@ -115,6 +119,7 @@ async def on_ready():
         print("synced")
     except Exception as e:
         print(e)
+    await checktime()
 
 # When joining a new guild:
 @bot.event
@@ -223,14 +228,17 @@ async def check(ctx):
     else:
         await ctx.respond("**Error:** To force check for birthdays, you must be able to manage the server.", ephemeral=True)
 
-def checktime():
+async def checktime():
     threading.Timer(60, checktime).start()
     now = datetime.datetime.now()
     time = now.strftime("%H:%M")
     print("Current time:", time)
-    if (time == "00:00"):
-        checkbirth()
+    if (str(time) == "00:00"):
+        await checkbirth()
+    await checkbirth()
+
+def main():
+    bot.run(token)
 
 if __name__ == "__main__":
-    checktime()
-    bot.run(token)
+    main()
