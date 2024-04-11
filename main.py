@@ -2,6 +2,7 @@
 # pip install py-cord
 
 import os
+import time
 import asyncio
 import threading
 import datetime
@@ -41,12 +42,16 @@ def isleap():
 # Function to return whether given user has registered their birthday in given
 # guild
 def registered(guild, user):
+    print(f"Checking if {user} in {guild} is registerd.")
     lines = []
     try:
         with open("./birthdays/" + str(guild) + ".txt", "r") as file:
             lines = file.readlines()
+        print(lines)
         for line in lines:
+            print(line)
             if str(user) in line:
+                print("Registered here!")
                 return True
     except FileNotFoundError:
         return False
@@ -79,14 +84,17 @@ async def checkguild(guild):
         now = datetime.date.today()
         for line in lines:
             split = numberify(line.split(" "))
-            if now.day == split[1] and now.month == split[2]:
-                print(f"Birthday detected for user {split[0]}")
-                await birthday(guild, role, channel, split[0])
-            elif not isleap() and split[1] == 29 and now.day == 29 and now.month == 2:
-                print(f"Birthday detected for user {split[0]} (normally 29/2, but this is not a leap year)")
-                await birthday(guild, role, channel, split[0])
-            else:
-                await unbirthday(guild, role, channel, split[0])
+            try:
+                if now.day == split[1] and now.month == split[2]:
+                    print(f"Birthday detected for user {split[0]}")
+                    await birthday(guild, role, channel, split[0])
+                elif not isleap() and split[1] == 29 and now.day == 29 and now.month == 2:
+                    print(f"Birthday detected for user {split[0]} (normally 29/2, but this is not a leap year)")
+                    await birthday(guild, role, channel, split[0])
+                else:
+                    await unbirthday(guild, role, channel, split[0])
+            except discord.errors.NotFound:
+                print("Oops! Unknown person!")
 
 async def birthday(guild_id, role_id, channel_id, user_id):
     guild   = bot.get_guild(guild_id)
@@ -107,8 +115,6 @@ async def unbirthday(guild_id, role_id, channel_id, user_id):
     except discord.errors.Forbidden:
         print(f"Tried to remove birthday priveleges from {user.name}, but failed. Might someone else do it, pretty please?")
 
-
-
 # When the bot is ready:
 @bot.event
 async def on_ready():
@@ -119,7 +125,7 @@ async def on_ready():
         print("synced")
     except Exception as e:
         print(e)
-    await checktime()
+    await wrapper()
 
 # When joining a new guild:
 @bot.event
@@ -156,19 +162,12 @@ async def addbirth(ctx,
             raise ValueError("day not within range")
         if registered(ctx.guild.id, ctx.author.id):
             raise AttributeError("already registered")
-
-        value = f"{ctx.author.id} {day} {month}\n"
         try:
-            with open(f"./birthdays/{ctx.guild.id}.txt", "r") as file:
-                lines = file.readlines()
-            split = lines.split(" ")
-            for i in range(0, len(split)):
-                if split[i][1] > day and split[i][2] > month:
-                    lines.insert(i, value)
+            with open("./birthdays/" + str(ctx.guild.id) + ".txt", "a") as file:
+                file.write(f"{ctx.author.id} {day} {month}\n")
         except FileNotFoundError:
-            lines = [value]
-        with open("./birthdays/" + str(ctx.guild.id) + ".txt", "w") as file:
-            file.writelines(lines)
+            with open("./birthdays/" + str(ctx.guild.id) + ".txt", "w") as file:
+                file.write(f"{ctx.author.id} {day} {month}\n")
 
         if day == 29 and month == 2:
             await ctx.respond(f"{ctx.author.mention}, your birthday has been recorded as {day}/{month}. *On non-leap years, your birthday will be treated as 28/02.*", ephemeral=True)
@@ -179,8 +178,10 @@ async def addbirth(ctx,
         await ctx.respond("**Error:** Day and month should be valid numbers.", ephemeral=True)
     except AttributeError:
         await ctx.respond("**Error:** You already have a birthday registered.", ephemeral=True)
-    # except Exception as e:
-    #     await ctx.respond(f"**Fatal Error:** {e}", ephemeral=True)
+    except Exception as e:
+        await ctx.respond(f"**Fatal Error:** {e}", ephemeral=True)
+
+
 
 @bot.command(name="init", description="set the bot up")
 async def init(ctx,
@@ -210,15 +211,16 @@ async def list(ctx):
     guild = ctx.guild
     with open(f"./birthdays/{guild.id}.txt", 'r') as file:
         lines = file.readlines()
-    output = ""
+    output = "# All registered birthdays:\n"
     for line in lines:
         split = line.split()
-        user = await guild.fetch_member(split[0])
-        date = split[1] + "/" + split[2]
-        output = output + f"{user.name} - {date}\n"
-    await ctx.respond(output)
-
-
+        try:
+            user = await guild.fetch_member(split[0])
+            date = split[1] + "/" + split[2]
+            output = output + f"{user.mention} - {date}\n"
+        except discord.errors.NotFound:
+            print("Whoops, unknown person")
+    await ctx.respond(output, ephemeral=True)
 
 @bot.command(name="check", description="force check for birthdays")
 async def check(ctx):
@@ -228,15 +230,17 @@ async def check(ctx):
     else:
         await ctx.respond("**Error:** To force check for birthdays, you must be able to manage the server.", ephemeral=True)
 
-async def checktime():
-    threading.Timer(60, checktime).start()
+async def run_at(time, coro):
     now = datetime.datetime.now()
-    time = now.strftime("%H:%M")
-    print("Current time:", time)
-    if (str(time) == "00:00"):
-        await checkbirth()
-    await checkbirth()
+    delay = ((time - now) % datetime.timedelta(days=1)).total_seconds()
+    await asyncio.sleep(delay)
+    return await coro
 
+async def wrapper():
+    time = datetime.datetime.combine(datetime.date.today(), datetime.time(0, 0))
+    while True:
+        await run_at(time, checkbirth())
+    
 def main():
     bot.run(token)
 
